@@ -1,0 +1,72 @@
+<?php
+
+namespace App\Http\Livewire;
+
+use App\Models\Product;
+use App\Models\Warehouse;
+use Livewire\Component;
+
+class CreateIncome extends Component
+{
+    public $products;
+    public $search = '';
+    public $incomeProducts = [];
+    public $productQuantities = [];
+    public $productPrices = [];
+
+    protected $validationAttributes = [
+        'productQuantities.*' => 'Количество',
+        'productPrices.*' => 'Цена',
+    ];
+
+    public function mount()
+    {
+        $this->products = Product::all();
+    }
+
+    public function render()
+    {
+        $this->products = Product::query()->searchName($this->search)->get();
+
+        return view('livewire.create-income', [
+            'products' => $this->products,
+            'incomeProducts' => $this->incomeProducts,
+            'productQuantities' => $this->productQuantities,
+            'productPrices' => $this->productPrices,
+        ]);
+    }
+
+    public function addIncomeProduct(Product $product)
+    {
+        if ($product) {
+            array_push($this->incomeProducts, $product->toArray());
+            array_push($this->productQuantities, array());
+            array_push($this->productPrices, array());
+        }
+    }
+
+    public function deleteProduct($index)
+    {
+        unset($this->incomeProducts[$index]);
+        unset($this->productQuantities[$index]);
+        unset($this->productPrices[$index]);
+    }
+
+    public function createIncome()
+    {
+        $this->validate([
+            'productQuantities.*' => 'required|numeric|min:1',
+            'productPrices.*' => 'required|numeric|min:1',
+        ]);
+
+        $productsArray = array();
+        foreach ($this->incomeProducts as $index => $product) {
+            $productsArray[$product['id']] = ['quantity' => $this->productQuantities[$index], 'price' => $this->productPrices[$index]];
+        }
+
+        $income = Warehouse::create();
+        $income->products()->attach($productsArray);
+
+        return redirect()->to('/warehouse');
+    }
+}
